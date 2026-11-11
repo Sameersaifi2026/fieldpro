@@ -176,6 +176,7 @@ const P = {
   upload: '<path d="M12 16V5"/><path d="M7 10l5-5 5 5"/><path d="M5 20h14"/>',
   download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  gallery: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M21 16l-5-5-9 9"/>',
   share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/>',
@@ -1178,7 +1179,7 @@ function NewReport({ ctx }) {
   const [locErr, setLocErr] = useState('');
   const [locBusy, setLocBusy] = useState(false);
   const [busy, setBusy] = useState(false);
-  const sig = useRef(null), fileRef = useRef(null);
+  const sig = useRef(null), camRef = useRef(null), galRef = useRef(null);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   const refreshLoc = async () => {
@@ -1188,18 +1189,28 @@ function NewReport({ ctx }) {
   };
   useEffect(() => { refreshLoc(); return () => photos.forEach((p) => URL.revokeObjectURL(p.url)); }, []);
 
-  const addPhotos = async (e) => {
-    const files = Array.from(e.target.files || []).slice(0, 4 - photos.length);
+  const addPhotos = (fromGallery) => async (e) => {
+    const files = Array.from(e.target.files || []).filter((f) => /^image\//.test(f.type) || !f.type).slice(0, 4 - photos.length);
     e.target.value = '';
     if (!files.length) return;
-    const stamp = [new Date().toLocaleString('en-IN'), loc ? fmtGps(loc.lat, loc.lng) : 'GPS unavailable', loc?.area || ''].filter(Boolean);
+    const now = new Date().toLocaleString('en-IN');
+    const where = [loc ? fmtGps(loc.lat, loc.lng) : 'GPS unavailable', loc?.area || ''].filter(Boolean);
     const next = [];
-    for (const file of files) {
-      const blob = await compressImage(file, { max: 1600, stamp });
-      if (blob) next.push({ blob, url: URL.createObjectURL(blob) });
+    try {
+      for (const file of files) {
+        // Gallery photos are marked as such, so the stamp never claims they were taken on site just now.
+        const stamp = fromGallery ? [`From gallery · added ${now}`, ...where] : [now, ...where];
+        const blob = await compressImage(file, { max: 1600, stamp });
+        if (blob) next.push({ blob, url: URL.createObjectURL(blob) });
+      }
+    } catch {
+      ctx.flash('Could not read that photo. Try another one.', true);
     }
+    if (!next.length) return;
     setPhotos((p) => p.concat(next).slice(0, 4));
-    ctx.flash(next.length > 1 ? `${next.length} photos added with GPS stamp` : 'Photo captured with GPS stamp');
+    ctx.flash(fromGallery
+      ? `${next.length} photo${next.length > 1 ? 's' : ''} added from gallery`
+      : next.length > 1 ? `${next.length} photos added with GPS stamp` : 'Photo captured with GPS stamp');
   };
 
   const submit = async () => {
@@ -1279,9 +1290,12 @@ function NewReport({ ctx }) {
         <div class="photo-grid">
           ${photos.map((p, i) => html`<div class="tile" key=${p.url}><img src=${p.url} alt=${`Photo ${i + 1}`} />
             <button type="button" class="x" aria-label="Remove photo" onClick=${() => { URL.revokeObjectURL(p.url); setPhotos(photos.filter((_, j) => j !== i)); }}>×</button></div>`)}
-          ${photos.length < 4 && html`<button type="button" class="add-tile" aria-label="Take photo" onClick=${() => fileRef.current.click()}><${Icon} n="camera" s=${22} /></button>`}
+          ${photos.length < 4 && html`
+            <button type="button" class="add-tile" aria-label="Take photo with camera" onClick=${() => camRef.current.click()}><span class="add-in"><${Icon} n="camera" s=${22} />Camera</span></button>
+            <button type="button" class="add-tile" aria-label="Choose photos from gallery" onClick=${() => galRef.current.click()}><span class="add-in"><${Icon} n="gallery" s=${22} />Gallery</span></button>`}
         </div>
-        <input ref=${fileRef} type="file" accept="image/*" capture="environment" multiple style="display:none" onChange=${addPhotos} />
+        <input ref=${camRef} type="file" accept="image/*" capture="environment" style="display:none" onChange=${addPhotos(false)} />
+        <input ref=${galRef} type="file" accept="image/*" multiple style="display:none" onChange=${addPhotos(true)} />
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div class="row between">
