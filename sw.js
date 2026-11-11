@@ -1,7 +1,8 @@
 // FieldPro service worker: caches the app shell so it opens fast and installs
 // as an app. Data always comes live from Supabase (never cached here).
-const CACHE = 'fieldpro-v1';
-const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg'];
+const CACHE = 'fieldpro-v2';
+const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest', 'icon.svg',
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
