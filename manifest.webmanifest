@@ -1,0 +1,14 @@
+{
+  "name": "FieldPro",
+  "short_name": "FieldPro",
+  "description": "Attendance, live tracking and service reports for your field team.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F5F8",
+  "theme_color": "#13233A",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,5 @@
+# Local-only files: never publish
+TEST-ACCOUNTS.md
+.claude/
+site/
+FieldPro-site.zip
